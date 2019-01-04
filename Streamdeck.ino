@@ -15,39 +15,33 @@ Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 void setup() {
   Serial.begin(115200);
   Keyboard.begin();
-  keypad.addEventListener(keypadEvent);
+  keypad.addEventListener(keypadEvent);  
 }
 
 void loop() {
+  
   keypad.getKey();
 }
 
 void keypadEvent(KeypadEvent key) {
-  Serial.println(key);
-  switch (keypad.getState()) {
-    case PRESSED:
-      Keyboard.press(KEY_LEFT_CTRL);
-      Keyboard.press(KEY_LEFT_SHIFT);
-      switch (key) {
-        case '1':
-          Keyboard.press(KEY_F1);
-          break;
-        case '2':
-          Keyboard.press(KEY_F2);
-          break;
-        case '3':
-          Keyboard.press(KEY_F3);
-          break;
-        case '4':
-          Keyboard.press(KEY_F4);
-          break;
-      }
-      break;
-    case RELEASED:
-      switch (key) {
-          Keyboard.releaseAll();
-          break;
-      }
-      break;
+  if (keypad.getState() == PRESSED) {
+    Keyboard.press(KEY_LEFT_CTRL);
+    Keyboard.press(KEY_LEFT_SHIFT);
+    switch (key) {
+      case '1':
+        Keyboard.press(KEY_F1);
+        break;
+      case '2':
+        Keyboard.press(KEY_F2);
+        break;
+      case '3':
+        Keyboard.press(KEY_F3);
+        break;
+      case '4':
+        Keyboard.press(KEY_F4);
+        break;
+    }
   }
+  delay(100);
+  Keyboard.releaseAll();
 }
