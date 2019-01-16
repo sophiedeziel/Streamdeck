@@ -1,5 +1,12 @@
 #include <Keyboard.h>
 #include <Keypad.h>
+#include <TM1637Display.h>
+#include <TimeLib.h>
+
+#define UPTIME_CLK_PIN 2
+#define UPTIME_DIO_PIN 3
+#define RAID_SWITCH_PIN 7
+#define LIVE_SWITCH_PIN A0
 
 const byte ROWS = 3;
 const byte COLS = 5;
@@ -12,8 +19,12 @@ byte rowPins[ROWS] = {14, 15, 9};
 byte colPins[COLS] = {4, 5, 6, 10, 8};
 
 long last_raid;
-long last_live;
+long last_live_toggle;
+
 bool live = false;
+time_t live_since = now();
+
+TM1637Display display(UPTIME_CLK_PIN, UPTIME_DIO_PIN);
 
 Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 
@@ -22,30 +33,31 @@ void setup() {
   Keyboard.begin();
   keypad.addEventListener(keypadEvent);
 
-  pinMode(7, INPUT_PULLUP);
-  pinMode(A0, INPUT);
-  attachInterrupt(digitalPinToInterrupt(7), triggerRaid, RISING);
+  pinMode(RAID_SWITCH_PIN, INPUT_PULLUP);
+  pinMode(LIVE_SWITCH_PIN, INPUT);
+  attachInterrupt(digitalPinToInterrupt(RAID_SWITCH_PIN), triggerRaid, RISING);
+  display.setBrightness(0x33);
+
+
 }
 
 void loop() {
-  if (millis() - last_live > 200) {
-    if (digitalRead(A0) == HIGH && live == false) {
-      Keyboard.press(KEY_LEFT_CTRL);
-      Keyboard.press(KEY_LEFT_SHIFT);
-      Keyboard.press(KEY_F19);
+  displayUptime();
 
-      live = true;
-    } else if (digitalRead(A0) == LOW && live == true) {
-      Keyboard.press(KEY_LEFT_CTRL);
-      Keyboard.press(KEY_LEFT_SHIFT);
-      Keyboard.press(KEY_F20);
-      live = false;
+  if (millis() - last_live_toggle > 200) {
+    if (digitalRead(LIVE_SWITCH_PIN) == HIGH && live == false) {
+      startLive();
+    } else if (digitalRead(LIVE_SWITCH_PIN) == LOW && live == true) {
+      endLive();
     }
-    delay(10);
-    Keyboard.releaseAll();
-    last_live = millis();
+
+    last_live_toggle = millis();
   }
+
   keypad.getKey();
+
+
+
 }
 
 void keypadEvent(KeypadEvent key) {
@@ -77,4 +89,44 @@ void triggerRaid() {
     Serial.println("Le raid est partiiiiiiiiiii!");
     last_raid = millis();
   }
+}
+
+void startLive() {
+  Keyboard.press(KEY_LEFT_CTRL);
+  Keyboard.press(KEY_LEFT_SHIFT);
+  keyboard.press(KEY_F19);
+
+  live = true;
+  live_since = now();
+  delay(10);
+  Keyboard.releaseAll();
+}
+
+void endLive() {
+  Keyboard.press(KEY_LEFT_CTRL);
+  Keyboard.press(KEY_LEFT_SHIFT);
+  Keyboard.press(KEY_F20);
+
+  live = false;
+  delay(10);
+  Keyboard.releaseAll();
+}
+
+void displayUptime() {
+  uint8_t data[] = { 0xff, 0xff, 0xff, 0xff };
+
+  if (live) {
+    time_t t = now() - live_since;
+
+    display.showNumberDecEx(hour(t) * 100 + minute(t), 0x40, true);
+  } else {
+    uint8_t SEG_UNDEFINED[] = {
+      SEG_G,
+      SEG_G,
+      SEG_G,
+      SEG_G,
+    };
+    display.setSegments(SEG_UNDEFINED);
+  }
+
 }
