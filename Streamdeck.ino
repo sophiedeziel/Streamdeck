@@ -15,6 +15,9 @@
 #define RTC_CLK_PIN A3
 #define RTC_CE_PIN A1
 
+#define DOTS 0x40
+#define NO_DOTS 0x00
+
 const byte ROWS = 3;
 const byte COLS = 5;
 char keys[ROWS][COLS] = {
@@ -154,7 +157,7 @@ void display_liveUptime() {
   if (live) {
     time_t t = now() - live_since;
 
-    display_live.showNumberDecEx(hour(t) * 100 + minute(t), 0x40, true);
+    display_live.showNumberDecEx(hour(t) * 100 + minute(t), second(t) & 1 ? DOTS : NO_DOTS , true);
   } else {
     uint8_t SEG_UNDEFINED[] = {
       SEG_G,
@@ -168,5 +171,5 @@ void display_liveUptime() {
 
 void printDateTime(const RtcDateTime& dt)
 {
-  display_clock.showNumberDecEx(dt.Hour() * 100 + dt.Minute(), 0x40, true);
+  display_clock.showNumberDecEx(dt.Hour() * 100 + dt.Minute(), dt.Second() & 1 ? DOTS : NO_DOTS, true);
 }
