@@ -1,3 +1,5 @@
+//#define DEBUG true
+
 #include <Keyboard.h>
 #include <Keypad.h>
 #include <TM1637Display.h>
@@ -39,11 +41,13 @@ TM1637Display display_clock(CLOCK_CLK_PIN, CLOCK_DIO_PIN);
 
 // Keypad keypad = Keypad( makeKeymap(keys), rowPins, colPins, ROWS, COLS );
 
-ThreeWire myWire(RTC_DIO_PIN, RTC_CLK_PIN, RTC_CE_PIN); 
+ThreeWire myWire(RTC_DIO_PIN, RTC_CLK_PIN, RTC_CE_PIN);
 RtcDS1302<ThreeWire> Rtc(myWire);
 
 void setup() {
+#ifdef DEBUG
   Serial.begin(115200);
+#endif
   Keyboard.begin();
   Rtc.Begin();
   // keypad.addEventListener(keypadEvent);
@@ -53,27 +57,32 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(RAID_SWITCH_PIN), triggerRaid, RISING);
   display_live.setBrightness(0x33);
   display_clock.setBrightness(0x32);
-  
+
   RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
   printDateTime(compiled);
-  Serial.println();
 
   if (Rtc.GetIsWriteProtected())
   {
+#ifdef DEBUG
     Serial.println("RTC was write protected, enabling writing now");
+#endif
     Rtc.SetIsWriteProtected(false);
   }
 
   if (!Rtc.GetIsRunning())
   {
+#ifdef DEBUG
     Serial.println("RTC was not actively running, starting now");
+#endif
     Rtc.SetIsRunning(true);
   }
 
   RtcDateTime now = Rtc.GetDateTime();
   if (now < compiled)
   {
+#ifdef DEBUG
     Serial.println("RTC is older than compile time!  (Updating DateTime)");
+#endif
     Rtc.SetDateTime(compiled);
   }
 
@@ -119,9 +128,9 @@ void loop() {
 //        break;
 //    }
 //  }
- // delay(10);
- // Keyboard.releaseAll();
-//} 
+// delay(10);
+// Keyboard.releaseAll();
+//}
 
 void triggerRaid() {
   if (millis() - last_raid > 200) {
@@ -172,4 +181,7 @@ void display_liveUptime() {
 void printDateTime(const RtcDateTime& dt)
 {
   display_clock.showNumberDecEx(dt.Hour() * 100 + dt.Minute(), dt.Second() & 1 ? DOTS : NO_DOTS, true);
+#ifdef DEBUG
+  Serial.println("Time updated");
+#endif
 }
