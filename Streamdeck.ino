@@ -34,7 +34,7 @@ long last_raid;
 long last_live_toggle;
 
 bool live = false;
-time_t live_since = now();
+RtcDateTime live_since;
 
 TM1637Display display_live(UPTIME_CLK_PIN, UPTIME_DIO_PIN);
 TM1637Display display_clock(CLOCK_CLK_PIN, CLOCK_DIO_PIN);
@@ -55,8 +55,8 @@ void setup() {
   pinMode(RAID_SWITCH_PIN, INPUT_PULLUP);
   pinMode(LIVE_SWITCH_PIN, INPUT);
   attachInterrupt(digitalPinToInterrupt(RAID_SWITCH_PIN), triggerRaid, RISING);
-  display_live.setBrightness(0x33);
-  display_clock.setBrightness(0x32);
+  display_live.setBrightness(0x34);
+  display_clock.setBrightness(0x33);
 
   RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
   printDateTime(compiled);
@@ -89,14 +89,14 @@ void setup() {
 }
 
 void loop() {
-  display_liveUptime();
   RtcDateTime now = Rtc.GetDateTime();
 
   printDateTime(now);
+  display_liveUptime(now);
 
   if (millis() - last_live_toggle > 200) {
     if (digitalRead(LIVE_SWITCH_PIN) == HIGH && live == false) {
-      startLive();
+      startLive(now);
     } else if (digitalRead(LIVE_SWITCH_PIN) == LOW && live == true) {
       endLive();
     }
@@ -139,13 +139,13 @@ void triggerRaid() {
   }
 }
 
-void startLive() {
+void startLive(const RtcDateTime& dt) {
   Keyboard.press(KEY_LEFT_CTRL);
   Keyboard.press(KEY_LEFT_SHIFT);
   Keyboard.press(KEY_F19);
 
   live = true;
-  live_since = now();
+  live_since = dt;
   delay(10);
   Keyboard.releaseAll();
 }
@@ -160,13 +160,13 @@ void endLive() {
   Keyboard.releaseAll();
 }
 
-void display_liveUptime() {
+void display_liveUptime(const RtcDateTime& dt) {
   uint8_t data[] = { 0xff, 0xff, 0xff, 0xff };
 
   if (live) {
-    time_t t = now() - live_since;
+    RtcDateTime t = dt - live_since;
 
-    display_live.showNumberDecEx(hour(t) * 100 + minute(t), second(t) & 1 ? DOTS : NO_DOTS , true);
+    display_live.showNumberDecEx(t.Hour() * 100 + t.Minute(), dt.Second() & 1 ? DOTS : NO_DOTS, true);
   } else {
     uint8_t SEG_UNDEFINED[] = {
       SEG_G,
